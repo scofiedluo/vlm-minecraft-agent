@@ -12,3 +12,4 @@ runs/
 *.mkv
 .DS_Store
 .codebuddy/
+bot/node_modules/
