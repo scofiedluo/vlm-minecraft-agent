@@ -1,10 +1,10 @@
 # Minecraft 安装与当前测试记录
 
-本文记录当前阶段的测试结论，以及 Windows 环境下安装 Minecraft Java Edition 的推荐步骤。
+本文记录当前阶段的测试结论、Windows 环境下安装 Minecraft Java Edition 的步骤，以及 `mineflayer` + 本地服务端的连通性验证。
 
 ## 1. 当前阶段测试结论
 
-当前项目还没有接入 `mineflayer`，已经完成的是基于屏幕截图和键鼠模拟的 Python MVP：
+当前 Python Agent 主流程仍是基于屏幕截图和键鼠模拟的 MVP；同时，`mineflayer` 独立连服测试已经完成，服务端可以看到 `vlm_agent joined the game`：
 
 ```text
 Minecraft 画面截图
@@ -234,23 +234,204 @@ left,top,width,height
 
 即从屏幕左上角 `(left, top)` 开始，截取指定宽高区域。
 
-## 9. 后续接入 mineflayer 的准备
+## 9. mineflayer 与本地服务端安装记录
 
-当前阶段不需要 `mineflayer`。后续接入时建议额外准备：
+当前已经完成 `mineflayer` 独立连服验证：
 
 ```text
-Node.js 20 LTS
-Paper Server 1.20.1
-mineflayer
-mineflayer-pathfinder
-prismarine-viewer
+Minecraft Server 版本: 1.20.1
+Bot 用户名: vlm_agent
+连接地址: localhost:25565
+验证结果: 服务端日志可以看到 vlm_agent joined the game
 ```
 
-后续推荐架构：
+这说明：
+
+- 本地 Minecraft Server 已经正常启动。
+- `mineflayer` 能通过协议连接到服务端。
+- Node.js 依赖安装正常。
+- 后续可以在此基础上接入路径规划、动作执行和 VLM 决策。
+
+### 9.1 推荐环境组合
 
 ```text
-VLM 负责观察和高层决策
-mineflayer 负责稳定执行移动、寻路、挖掘、背包和合成
+Windows
+Java 17
+Node.js 20 LTS
+Minecraft Java Edition 1.20.1
+Paper / Vanilla Server 1.20.1
+mineflayer 4.x
+mineflayer-pathfinder
+prismarine-viewer
+vec3
+```
+
+当前 `bot/package.json` 中的依赖：
+
+```json
+{
+  "mineflayer": "^4.37.1",
+  "mineflayer-pathfinder": "^2.4.5",
+  "prismarine-viewer": "^1.33.0",
+  "vec3": "^0.2.0"
+}
+```
+
+### 9.2 服务端安装与启动
+
+推荐为服务端单独创建目录，例如：
+
+```powershell
+mkdir D:\vla\mc-server-1.20.1
+cd D:\vla\mc-server-1.20.1
+```
+
+下载 `Paper 1.20.1` 服务端，放到该目录并命名为：
+
+```text
+paper.jar
+```
+
+首次启动：
+
+```powershell
+java -Xms1G -Xmx2G -jar .\paper.jar --nogui
+```
+
+首次启动会生成 `eula.txt`，需要编辑：
+
+```text
+eula=true
+```
+
+然后编辑 `server.properties`，本地测试推荐配置：
+
+```properties
+online-mode=false
+difficulty=peaceful
+gamemode=survival
+pvp=false
+spawn-protection=0
+view-distance=8
+simulation-distance=8
+server-port=25565
+```
+
+再次启动服务端：
+
+```powershell
+java -Xms1G -Xmx2G -jar .\paper.jar --nogui
+```
+
+看到类似信息说明服务端启动成功：
+
+```text
+Done (...)! For help, type "help"
+```
+
+注意：`online-mode=false` 仅建议用于本地开发测试，不要用于公网服务器。
+
+### 9.3 mineflayer 安装
+
+在项目根目录创建 `bot` 目录：
+
+```powershell
+cd D:\vla\vlm-minecraft-agent
+mkdir bot
+cd bot
+npm init -y
+npm install mineflayer mineflayer-pathfinder prismarine-viewer vec3
+```
+
+当前测试脚本路径：
+
+```text
+bot/test_bot.js
+```
+
+核心连接配置：
+
+```js
+const mineflayer = require('mineflayer')
+
+const bot = mineflayer.createBot({
+  host: 'localhost',
+  port: 25565,
+  username: 'vlm_agent',
+  version: '1.20.1'
+})
+
+bot.once('spawn', () => {
+  console.log('Bot spawned in Minecraft')
+  bot.chat('Hello, I am VLM Agent')
+})
+
+bot.on('error', err => console.error(err))
+bot.on('end', () => console.log('Bot disconnected'))
+```
+
+运行测试：
+
+```powershell
+cd D:\vla\vlm-minecraft-agent\bot
+node .\test_bot.js
+```
+
+成功现象：
+
+- Node 控制台输出：
+
+```text
+Bot spawned in Minecraft
+```
+
+- Minecraft 服务端控制台输出类似：
+
+```text
+vlm_agent joined the game
+```
+
+- 如果打开 Minecraft 客户端进入同一个服务端，可以在游戏里看到 `vlm_agent`。
+
+### 9.4 客户端加入本地服务端
+
+如果需要用 Minecraft 客户端观察 bot：
+
+1. 启动 Minecraft Java Edition `1.20.1`。
+2. 点击 `Multiplayer`。
+3. 添加服务器：
+
+```text
+Server Name: local-vlm-server
+Server Address: localhost:25565
+```
+
+4. 加入服务器后，可以观察 `vlm_agent` 的位置和动作。
+
+### 9.5 后续接入方向
+
+后续推荐把当前 Python VLM 决策和 Node `mineflayer` 执行层拆开：
+
+```text
+Python
+  -> 截图 / VLM 请求 / JSON 决策
+  -> 输出高层动作
+
+Node.js mineflayer
+  -> 接收动作
+  -> 执行寻路、挖掘、攻击、合成、背包操作
+```
+
+推荐后续优先实现动作：
+
+```text
+look_around
+move_forward / go_to_position
+turn_to
+mine_nearest_tree
+collect_drops
+escape_from_mob
+idle
 ```
 
 这样比纯 `pyautogui` 更稳定，也更适合后续 Demo。
