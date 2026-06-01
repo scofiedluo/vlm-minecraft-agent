@@ -18,10 +18,24 @@
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "max_output_tokens": 512,
     "temperature": 0.7,
-    "enable_thinking": true
+    "enable_thinking": false
   },
   "qwen3.6-flash": {
     "model_name": "qwen3.6-flash",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "max_output_tokens": 512,
+    "temperature": 0.7,
+    "enable_thinking": false
+  },
+  "qwen3-vl-plus": {
+    "model_name": "qwen3-vl-plus",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "max_output_tokens": 512,
+    "temperature": 0.7,
+    "enable_thinking": false
+  },
+  "qwen3-vl-flash": {
+    "model_name": "qwen3-vl-flash",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "max_output_tokens": 512,
     "temperature": 0.7,
