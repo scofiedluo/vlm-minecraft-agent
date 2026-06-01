@@ -35,8 +35,10 @@ class Settings(BaseModel):
     dashscope_api_key: str | None = None
     vlm_model: str = "qwen-vl-plus"
     model_call: ModelCallConfig = Field(default_factory=lambda: load_model_config("qwen-vl-plus"))
+    agent_objective: str = "收集木头并保证生存"
     action_mode: str = "dry-run"
     capture_region: CaptureRegion | None = None
+
     loop_interval: float = Field(default=2.0, ge=0.2, le=60.0)
     max_steps: int = Field(default=5, ge=1, le=1000)
     screenshot_dir: Path = PROJECT_ROOT / "runs" / "screenshots"
@@ -76,7 +78,9 @@ def load_settings(
     max_steps: int | None = None,
     loop_interval: float | None = None,
     capture_region: str | None = None,
+    agent_objective: str | None = None,
 ) -> Settings:
+
     _ = load_dotenv(dotenv_path=env_file or PROJECT_ROOT / ".env")
 
     vlm_model = os.getenv("VLM_MODEL", "qwen-vl-plus")
@@ -86,7 +90,9 @@ def load_settings(
         dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
         vlm_model=vlm_model,
         model_call=model_call,
+        agent_objective=os.getenv("AGENT_OBJECTIVE", "收集木头并保证生存"),
         action_mode=action_mode or os.getenv("ACTION_MODE", "dry-run"),
+
         capture_region=_parse_capture_region(capture_region if capture_region is not None else os.getenv("CAPTURE_REGION")),
         loop_interval=loop_interval if loop_interval is not None else float(os.getenv("LOOP_INTERVAL", "2.0")),
         max_steps=max_steps if max_steps is not None else int(os.getenv("MAX_STEPS", "5")),

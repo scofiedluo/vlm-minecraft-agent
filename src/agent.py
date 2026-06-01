@@ -31,26 +31,36 @@ class VLMMinecraftAgent:
         executor: ActionExecutor,
         *,
         loop_interval: float = 2.0,
+        objective: str = "收集木头并保证生存",
     ) -> None:
-        self.capture = capture
-        self.planner = planner
-        self.executor = executor
-        self.loop_interval = loop_interval
+        self.capture: ScreenCapture = capture
+        self.planner: DecisionPlanner = planner
+        self.executor: ActionExecutor = executor
+        self.loop_interval: float = loop_interval
+        self.objective: str = objective
+
+
 
     def run(self, *, max_steps: int = 5, once: bool = False) -> None:
         total_steps = 1 if once else max_steps
         logger.info("Agent started: steps=%s interval=%.2fs", total_steps, self.loop_interval)
 
         for step in range(1, total_steps + 1):
-            self.run_step(step)
+            _ = self.run_step(step)
             if step < total_steps:
                 time.sleep(self.loop_interval)
+
 
         logger.info("Agent finished")
 
     def run_step(self, step: int) -> Path:
-        state = AgentState(step=step, notes="Screen-only MVP; inventory/health can be filled manually later.")
+        state = AgentState(
+            step=step,
+            objective=self.objective,
+            notes="Screen-only MVP; inventory/health can be filled manually later.",
+        )
         image_path = self.capture.capture(prefix=f"step_{step:03d}")
+
         logger.info("[OBSERVE] screenshot=%s", image_path)
 
         decision = self.planner.decide(image_path, state)

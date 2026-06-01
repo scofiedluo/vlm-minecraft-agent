@@ -29,7 +29,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", type=int, default=None, help="Maximum agent steps")
     parser.add_argument("--interval", type=float, default=None, help="Loop interval in seconds")
     parser.add_argument("--region", default=None, help="Capture region: left,top,width,height")
+    parser.add_argument("--objective", default=None, help="Long-term agent objective")
     parser.add_argument("--once", action="store_true", help="Run exactly one observe-think-act step")
+
     parser.add_argument("--no-vlm", action="store_true", help="Skip API calls and use fallback decisions")
     return parser.parse_args()
 
@@ -64,7 +66,9 @@ def main() -> None:
         planner=planner,
         executor=executor,
         loop_interval=settings.loop_interval,
+        objective=settings.agent_objective,
     )
+
     agent.run(max_steps=settings.max_steps, once=args.once)
 
 

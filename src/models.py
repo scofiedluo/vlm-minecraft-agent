@@ -54,7 +54,9 @@ class AgentDecision(BaseModel):
 
 class AgentState(BaseModel):
     step: int = 0
+    objective: str = "收集木头并保证生存"
     health: int | None = None
     food: int | None = None
     inventory: list[str] = Field(default_factory=list)
     notes: str = ""
+
