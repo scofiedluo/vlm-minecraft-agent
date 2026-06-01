@@ -2,8 +2,8 @@
 Author: scofiedluo scofiedluo@gmail.com
 Date: 2026-05-31 18:12:47
 LastEditors: scofiedluo scofiedluo@gmail.com
-LastEditTime: 2026-06-01 21:50:08
-FilePath: vlm-minecraft-agent/src/prompts.py
+LastEditTime: 2026-06-02 00:30:43
+FilePath: \vlm-minecraft-agent\src\prompts.py
 Description: 
 
 Copyright (c) 2026 by ${scofiedluo}, All Rights Reserved. 
@@ -25,7 +25,11 @@ def build_user_prompt(state: AgentState) -> str:
     return f"""
 你正在通过第一人称画面观察来控制一个 Minecraft 玩家。
 
-允许的动作：
+## 游戏基础知识
+* 当你瞄准的花、草、石头等方出现了黑色框，表明你瞄准的物块是可挖掘的，挖掘之后才可以收集
+* 画面的中间最底部是物品栏
+
+## 允许的动作：
 {allowed}
 
 动作含义：
@@ -38,19 +42,20 @@ def build_user_prompt(state: AgentState) -> str:
 - escape：后退并转向，用于避开危险。
 - idle：短暂停留不动。
 
-当前长期目标：
+## 当前长期目标：
 {state.objective}
 
-执行原则：
+## 执行原则：
 1. 生存安全优先于长期目标。
 2. 如果画面中可见敌对生物、岩浆、悬崖、溺水或其他明确危险，选择 escape。
 3. 如果当前环境安全，选择最有助于推进长期目标的动作。
 4. 如果视野不清楚，选择 look_around。
 5. 优先选择短暂、安全的动作。不要编造允许列表以外的动作。
 
-当前结构化状态：
+## 当前结构化状态：
 {state.model_dump_json(ensure_ascii=False)}
 
+## 输出要求
 请严格按照以下结构返回 JSON：
 
 {{
