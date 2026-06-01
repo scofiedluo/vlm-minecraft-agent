@@ -17,6 +17,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
+from src.model_config import ModelCallConfig, load_model_config
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,8 +33,8 @@ class CaptureRegion(BaseModel):
 class Settings(BaseModel):
     project_root: Path = PROJECT_ROOT
     dashscope_api_key: str | None = None
-    dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     vlm_model: str = "qwen-vl-plus"
+    model_call: ModelCallConfig = Field(default_factory=lambda: load_model_config("qwen-vl-plus"))
     action_mode: str = "dry-run"
     capture_region: CaptureRegion | None = None
     loop_interval: float = Field(default=2.0, ge=0.2, le=60.0)
@@ -75,12 +77,15 @@ def load_settings(
     loop_interval: float | None = None,
     capture_region: str | None = None,
 ) -> Settings:
-    load_dotenv(dotenv_path=env_file or PROJECT_ROOT / ".env")
+    _ = load_dotenv(dotenv_path=env_file or PROJECT_ROOT / ".env")
+
+    vlm_model = os.getenv("VLM_MODEL", "qwen-vl-plus")
+    model_call = load_model_config(vlm_model, os.getenv("MODEL_CONFIG_FILE"))
 
     settings = Settings(
         dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
-        dashscope_base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-        vlm_model=os.getenv("VLM_MODEL", "qwen-vl-plus"),
+        vlm_model=vlm_model,
+        model_call=model_call,
         action_mode=action_mode or os.getenv("ACTION_MODE", "dry-run"),
         capture_region=_parse_capture_region(capture_region if capture_region is not None else os.getenv("CAPTURE_REGION")),
         loop_interval=loop_interval if loop_interval is not None else float(os.getenv("LOOP_INTERVAL", "2.0")),
