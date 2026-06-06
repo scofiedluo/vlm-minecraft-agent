@@ -121,7 +121,41 @@ conda run -n vlm_minecraft python -m src.main --steps 5
 .\scripts\run_all.ps1 -NoVLM
 ```
 
+## 推荐联调顺序（避免 VLM 截图错误）
+
+> 目标：让 `vlm_agent_bot_01` 执行、`vlm_agent` 客户端观察，并确保 VLM 看到的是 Minecraft 画面而不是 IDE/终端。
+
+- **步骤 1（终端A）**：启动 Minecraft 服务端（Paper/Vanilla），保持窗口不关闭。
+- **步骤 2（终端B）**：启动 Node 执行层并固定 bot 名称。
+
+```powershell
+cd d:/vla/vlm-minecraft-agent/bot
+$env:MC_USERNAME="vlm_agent_bot_01"
+$env:BOT_VIEWER_ENABLED="false"
+npm start
+```
+
+- **步骤 3（Prism 客户端）**：用你的玩家账号（例如 `vlm_agent`）加入 `localhost:25565`。
+- **步骤 4（终端C）**：启动 Python 规划层（VLM 主循环）。
+
+```powershell
+cd d:/vla/vlm-minecraft-agent
+conda run -n vlm_minecraft python -m src.main --steps 50 --region 0,0,1280,760
+```
+
+- **步骤 5（旁观/跟拍）**：客户端观察 `vlm_agent_bot_01` 行为。
+  - 有权限时：`/tp <你的ID> vlm_agent_bot_01`，然后 `/gamemode spectator` 进行旁观。
+  - 没权限时：在服务端控制台执行 `op <你的ID>` 后再使用上面命令。
+
+### 截图命中检查（非常关键）
+
+- **窗口位置**：Minecraft 客户端放在主屏左上角，分辨率与 `CAPTURE_REGION` 一致（例如 `1280x760`）。
+- **前台状态**：跑 VLM 时不要让 IDE/终端挡住该区域。
+- **结果核对**：检查 `runs/screenshots/` 最新图片，必须是 Minecraft 画面。
+- **日志核对**：`runs/logs/agent.log` 中应持续出现 `[PLAN]` 与 `[SKILL]`。
+
 ## 当前能力
+
 
 - 已打通闭环：`collect_block`（采木头）
 - 已提供最小生存技能：`goto`、`explore`、`craft`、`attack_nearest`、`flee`、`eat`
