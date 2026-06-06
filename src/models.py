@@ -2,8 +2,8 @@
 Author: scofiedluo scofiedluo@gmail.com
 Date: 2026-05-31 18:12:47
 LastEditors: scofiedluo scofiedluo@gmail.com
-LastEditTime: 2026-05-31 22:27:03
-FilePath: vlm-minecraft-agent/src/models.py
+LastEditTime: 2026-06-03 00:03:08
+FilePath: /vlm-minecraft-agent/src/models.py
 Description: 
 
 Copyright (c) 2026 by ${scofiedluo}, All Rights Reserved. 
@@ -14,6 +14,19 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class RecentStepContext(BaseModel):
+    step: int = 0
+    action_type: str = "idle"
+    action_duration: float = 0.0
+    action_reason: str = ""
+    goal: str = ""
+    scene_summary: str = ""
+    terrain: str = "unknown"
+    risk: Literal["low", "medium", "high", "unknown"] = "unknown"
+    visible_blocks: list[str] = Field(default_factory=list)
+    mobs: list[str] = Field(default_factory=list)
 
 
 ActionType = Literal[
@@ -41,7 +54,7 @@ class SceneInfo(BaseModel):
 
 class ActionCommand(BaseModel):
     type: ActionType = "idle"
-    duration: float = Field(default=1.0, ge=0.1, le=5.0)
+    duration: float = Field(default=1.0, ge=0.1, le=6.0)
     reason: str = ""
 
 
@@ -59,4 +72,5 @@ class AgentState(BaseModel):
     food: int | None = None
     inventory: list[str] = Field(default_factory=list)
     notes: str = ""
+    recent_context: list[RecentStepContext] = Field(default_factory=list)
 

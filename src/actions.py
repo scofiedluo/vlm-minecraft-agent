@@ -54,7 +54,14 @@ class DryRunActionExecutor(ActionExecutor):
 class PyAutoGUIActionExecutor(ActionExecutor):
     MOUSEEVENTF_MOVE: int = 0x0001
 
-    def __init__(self, pause: float = 0.05) -> None:
+    def __init__(
+        self,
+        pause: float = 0.05,
+        *,
+        counts_per_degree: float = 14.0,
+        turn_speed_deg_per_sec: float = 120.0,
+        look_sweep_deg_per_sec: float = 180.0,
+    ) -> None:
         import pyautogui
 
         self.pyautogui: _PyAutoGUIModule = cast(_PyAutoGUIModule, pyautogui)  # pyright: ignore[reportInvalidCast]
@@ -64,25 +71,37 @@ class PyAutoGUIActionExecutor(ActionExecutor):
         if sys.platform == "win32":
             self._user32 = cast(_User32, ctypes.windll.user32)  # pyright: ignore[reportInvalidCast]
 
+        # 核心标定参数：可通过经验调节，不同鼠标灵敏度下会不同
+        self.counts_per_degree: float = max(1.0, counts_per_degree)
+        self.turn_speed_deg_per_sec: float = max(10.0, turn_speed_deg_per_sec)
+        self.look_sweep_deg_per_sec: float = max(10.0, look_sweep_deg_per_sec)
+
     def execute(self, command: ActionCommand) -> None:
         logger.info("[PYAUTOGUI] action=%s duration=%.2fs", command.type, command.duration)
         action = command.type
         duration = command.duration
 
         if action == "look_around":
-            self._turn(900, duration=0.35)
-            time.sleep(0.15)
-            self._turn(-1800, duration=0.55)
-            time.sleep(0.15)
-            self._turn(900, duration=0.35)
+            sweep_deg = self._clamp(duration * self.look_sweep_deg_per_sec, 45.0, 260.0)
+            half = sweep_deg / 2.0
+            self._turn_by_degrees(half, duration=0.30)
+            time.sleep(0.12)
+            self._turn_by_degrees(-sweep_deg, duration=0.50)
+            time.sleep(0.12)
+            self._turn_by_degrees(half, duration=0.30)
+            logger.info("[TURN] look_around sweep≈%.1f° counts/deg=%.2f", sweep_deg, self.counts_per_degree)
         elif action == "move_forward":
             self._hold_key("w", duration)
         elif action == "move_backward":
             self._hold_key("s", duration)
         elif action == "turn_left":
-            self._turn(-1200, duration=min(duration, 1.0))
+            degrees = -self._clamp(duration * self.turn_speed_deg_per_sec, 12.0, 170.0)
+            self._turn_by_degrees(degrees, duration=min(max(duration, 0.12), 1.2))
+            logger.info("[TURN] left≈%.1f° counts/deg=%.2f", abs(degrees), self.counts_per_degree)
         elif action == "turn_right":
-            self._turn(1200, duration=min(duration, 1.0))
+            degrees = self._clamp(duration * self.turn_speed_deg_per_sec, 12.0, 170.0)
+            self._turn_by_degrees(degrees, duration=min(max(duration, 0.12), 1.2))
+            logger.info("[TURN] right≈%.1f° counts/deg=%.2f", degrees, self.counts_per_degree)
         elif action == "jump":
             self.pyautogui.press("space")
         elif action == "mine_or_attack":
@@ -91,21 +110,28 @@ class PyAutoGUIActionExecutor(ActionExecutor):
             self.pyautogui.mouseUp(button="left")
         elif action == "escape":
             self._hold_key("s", min(duration, 2.0))
-            self._turn(1000, duration=0.35)
+            self._turn_by_degrees(70.0, duration=0.35)
         elif action == "idle":
             time.sleep(min(duration, 2.0))
         else:
             logger.warning("Unsupported action ignored: %s", action)
 
-    def _turn(self, pixels: int, *, duration: float) -> None:
-        """用相对鼠标事件转向；Windows 下绕过 pyautogui.moveRel 对游戏视角不生效的问题。"""
+    def _turn_by_degrees(self, degrees: float, *, duration: float) -> None:
+        counts = int(round(degrees * self.counts_per_degree))
+        self._turn_counts(counts, duration=duration)
+
+    def _turn_counts(self, counts: int, *, duration: float) -> None:
+        """执行相对鼠标转向。counts 为鼠标移动计数，不直接等于角度。"""
+        if counts == 0:
+            return
+
         duration = max(duration, 0.01)
-        steps = max(1, min(80, int(abs(pixels) / 80)))
+        steps = max(1, min(80, int(abs(counts) / 80)))
         sent = 0
         sleep_time = duration / steps
 
         for step in range(1, steps + 1):
-            target = round(pixels * step / steps)
+            target = round(counts * step / steps)
             delta = target - sent
             self._move_mouse_relative(delta, 0)
             sent = target
@@ -125,6 +151,10 @@ class PyAutoGUIActionExecutor(ActionExecutor):
             time.sleep(min(duration, 3.0))
         finally:
             self.pyautogui.keyUp(key)
+
+    @staticmethod
+    def _clamp(value: float, low: float, high: float) -> float:
+        return max(low, min(value, high))
 
 
 def create_executor(mode: str) -> ActionExecutor:

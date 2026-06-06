@@ -45,7 +45,8 @@ class DecisionPlanner:
 
     def parse_decision(self, raw: str) -> AgentDecision:
         data = extract_json_object(raw)
-        decision = AgentDecision.model_validate(data)
+        normalized = normalize_decision_payload(data)
+        decision = AgentDecision.model_validate(normalized)
         if decision.action.type not in ALLOWED_ACTIONS:
             raise ValidationError.from_exception_data("AgentDecision", [])
         return decision
@@ -82,3 +83,53 @@ def extract_json_object(raw: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("VLM JSON response must be an object")
     return parsed
+
+
+def normalize_decision_payload(data: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = dict(data)
+
+    action_raw = normalized.get("action")
+    if not isinstance(action_raw, dict):
+        logger.warning("VLM action payload is invalid, fallback to look_around")
+        normalized["action"] = {
+            "type": "look_around",
+            "duration": 1.0,
+            "reason": "invalid_action_payload",
+        }
+        return normalized
+
+    action = dict(action_raw)
+
+    action_type = action.get("type")
+    if action_type not in ALLOWED_ACTIONS:
+        logger.warning("VLM action type unsupported: %s, fallback to look_around", action_type)
+        action["type"] = "look_around"
+
+    raw_duration = action.get("duration", 1.0)
+    try:
+        duration = float(raw_duration)
+    except (TypeError, ValueError):
+        duration = 1.0
+
+    clamped_duration = max(0.1, min(duration, 6.0))
+    if clamped_duration != duration:
+        logger.warning("VLM duration %.3f is out of range, clamped to %.3f", duration, clamped_duration)
+    action["duration"] = clamped_duration
+
+    reason = action.get("reason")
+    if not isinstance(reason, str):
+        action["reason"] = "" if reason is None else str(reason)
+
+    normalized["action"] = action
+
+    confidence = normalized.get("confidence")
+    if confidence is None:
+        conf_value = 0.0
+    else:
+        try:
+            conf_value = float(confidence)
+        except (TypeError, ValueError):
+            conf_value = 0.0
+    normalized["confidence"] = max(0.0, min(conf_value, 1.0))
+
+    return normalized
