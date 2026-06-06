@@ -13,4 +13,4 @@ if ($Once) {
     $onceArg = "--once"
 }
 
-conda run -n vlm_minecraft python -m src.main --mode $Mode --steps $Steps $onceArg
+conda run --no-capture-output -n vlm_minecraft python -u -m src.main --mode $Mode --steps $Steps $onceArg

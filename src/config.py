@@ -11,13 +11,17 @@ Copyright (c) 2026 by ${scofiedluo}, All Rights Reserved.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
+
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
 from src.model_config import ModelCallConfig, load_model_config
+from src.models import PlanStep
+
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -37,8 +41,10 @@ class Settings(BaseModel):
     model_call: ModelCallConfig = Field(default_factory=lambda: load_model_config("qwen3-vl-flash"))
 
     agent_objective: str = "收集木头并保证生存"
+    initial_plan: list[PlanStep] | None = None
     action_mode: str = "dry-run"  # legacy only
     capture_region: CaptureRegion | None = None
+
 
     loop_interval: float = Field(default=2.0, ge=0.2, le=60.0)
     max_steps: int = Field(default=5, ge=1, le=1000)
@@ -79,7 +85,21 @@ def _path_from_env(name: str, default: Path) -> Path:
 
 
 
+def _parse_initial_plan(raw: str | None) -> list[PlanStep] | None:
+    if not raw:
+        return None
+
+    data = json.loads(raw)
+    if not isinstance(data, list):
+        raise ValueError("INITIAL_PLAN_JSON must be a JSON array")
+
+    parsed = [PlanStep.model_validate(item) for item in data]
+    return parsed or None
+
+
+
 def load_settings(
+
     *,
     env_file: str | Path | None = None,
     action_mode: str | None = None,
@@ -98,6 +118,7 @@ def load_settings(
         vlm_model=vlm_model,
         model_call=model_call,
         agent_objective=agent_objective or os.getenv("AGENT_OBJECTIVE", "收集木头并保证生存"),
+        initial_plan=_parse_initial_plan(os.getenv("INITIAL_PLAN_JSON")),
         action_mode=action_mode or os.getenv("ACTION_MODE", "dry-run"),
         capture_region=_parse_capture_region(capture_region if capture_region is not None else os.getenv("CAPTURE_REGION")),
         loop_interval=loop_interval if loop_interval is not None else float(os.getenv("LOOP_INTERVAL", "2.0")),

@@ -47,6 +47,7 @@ MODEL_CONFIG_FILE=config/model_configs.json
 SKILL_SERVER_URL=http://127.0.0.1:3000
 SKILL_TIMEOUT_MS=30000
 PLANNER_FAIL_RETRY_THRESHOLD=2
+INITIAL_PLAN_JSON=[{"id":"1","goal":"先收集2个木头","status":"in_progress","skill":"collect_block","args":{"block":"oak_log","count":2}},{"id":"2","goal":"合成木板和工作台","status":"pending"}]
 ```
 
 Minecraft 连接相关（Node 执行层）：
@@ -54,7 +55,7 @@ Minecraft 连接相关（Node 执行层）：
 ```text
 MC_HOST=localhost
 MC_PORT=25565
-MC_USERNAME=vlm_agent
+MC_USERNAME=vlm_agent_bot_01
 MC_VERSION=1.20.1
 SKILL_SERVER_HOST=127.0.0.1
 SKILL_SERVER_PORT=3000
@@ -103,7 +104,7 @@ npm i canvas
 
 
 ```powershell
-conda run -n vlm_minecraft python -m src.main --steps 5
+conda run --no-capture-output -n vlm_minecraft python -u -m src.main --steps 5
 ```
 
 > 不要直接用系统 `python -m src.main`，否则可能因缺少 `pydantic` 等依赖出现“没反应/直接报错”。
@@ -140,7 +141,7 @@ npm start
 
 ```powershell
 cd d:/vla/vlm-minecraft-agent
-conda run -n vlm_minecraft python -m src.main --steps 50 --region 0,0,1280,760
+conda run --no-capture-output -n vlm_minecraft python -u -m src.main --steps 50 --region 0,0,1280,760
 ```
 
 - **步骤 5（旁观/跟拍）**：客户端观察 `vlm_agent_bot_01` 行为。

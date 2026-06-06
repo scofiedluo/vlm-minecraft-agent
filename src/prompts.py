@@ -51,7 +51,9 @@ def build_user_prompt(summary: dict[str, object]) -> str:
         f"允许技能白名单：{skills}\n"
         "输出要求：\n"
         "1) 只输出JSON对象；2) next_skill.name必须来自白名单；\n"
-        "3) args只能是语义参数（如block/count/mobType/dir），不要输出坐标和角度。\n\n"
+        "3) args只能是语义参数（如block/count/mobType/dir），不要输出坐标和角度；\n"
+        "4) 不要把当前正在执行的步骤主动标记为done，当前步骤完成由系统依据技能执行结果判定。\n\n"
+
         "当前状态摘要：\n"
         f"{json.dumps(summary, ensure_ascii=False, indent=2)}\n\n"
         "目标输出JSON Schema示例：\n"

@@ -123,7 +123,13 @@ class LastSkillResult(BaseModel):
     reason: str = ""
 
 
+class SafetySignal(BaseModel):
+    danger: bool = False
+    reason: str = "safe"
+
+
 class StateSnapshot(BaseModel):
+
     ok: bool = True
     tick: int = 0
     health: int | None = None
@@ -138,7 +144,9 @@ class StateSnapshot(BaseModel):
     heldItem: str | None = None
     nearbyBlocks: list[NearbyBlock] = Field(default_factory=list)
     nearbyEntities: list[NearbyEntity] = Field(default_factory=list)
+    safety: SafetySignal = Field(default_factory=SafetySignal)
     lastSkillResult: LastSkillResult | None = None
+
 
 
 class PlanStep(BaseModel):

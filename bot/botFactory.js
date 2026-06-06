@@ -1,6 +1,5 @@
 const mineflayer = require('mineflayer')
-const { pathfinder } = require('mineflayer-pathfinder')
-
+const { pathfinder, Movements } = require('mineflayer-pathfinder')
 
 function parseBool(raw, fallback = false) {
   if (raw == null) return fallback
@@ -13,7 +12,7 @@ function parseBool(raw, fallback = false) {
 function createBotFromEnv() {
   const host = process.env.MC_HOST || 'localhost'
   const port = Number(process.env.MC_PORT || '25565')
-  const username = process.env.MC_USERNAME || 'vlm_agent'
+  const username = process.env.MC_USERNAME || 'vlm_agent_bot_01'
   const version = process.env.MC_VERSION || '1.20.1'
 
   const viewerEnabled = parseBool(process.env.BOT_VIEWER_ENABLED, true)
@@ -30,6 +29,11 @@ function createBotFromEnv() {
   bot.loadPlugin(pathfinder)
 
   bot.once('spawn', () => {
+    const moves = new Movements(bot)
+    moves.canDig = true
+    moves.allow1by1towers = true
+    bot.pathfinder.setMovements(moves)
+
     console.log(`[bot] spawned: ${username}@${host}:${port} v${version}`)
 
     if (viewerEnabled) {
@@ -45,7 +49,16 @@ function createBotFromEnv() {
         console.warn('[viewer] fallback: set BOT_VIEWER_ENABLED=false to run bot without viewer')
       }
     }
+  })
 
+  bot.on('health', () => {
+    if ((bot.health ?? 20) <= 6) {
+      try {
+        bot.pathfinder.stop?.()
+      } catch (_) {
+        // ignore
+      }
+    }
   })
 
   bot.on('error', (err) => {
@@ -66,4 +79,5 @@ function createBotFromEnv() {
 module.exports = {
   createBotFromEnv,
 }
+
 

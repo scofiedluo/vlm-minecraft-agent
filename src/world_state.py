@@ -54,6 +54,8 @@ class WorldStateMemory:
             "health": self.current_snapshot.health,
             "food": self.current_snapshot.food,
             "timeOfDay": self.current_snapshot.timeOfDay,
+            "safety": self.current_snapshot.safety.model_dump(),
+
             "inventory": inventory,
             "nearbyBlocks": [b.model_dump() for b in self.current_snapshot.nearbyBlocks[:10]],
             "nearbyThreats": nearby_threats[:8],

@@ -1,10 +1,14 @@
+const { isHostile } = require('../entities')
+
 async function attackNearestSkill(bot, args = {}) {
+
   const mobType = args.mobType || null
   const maxDistance = Number(args.maxDistance || 12)
 
   const mobs = Object.values(bot.entities)
-    .filter((e) => e && e.type === 'mob' && e.position)
-    .filter((e) => (!mobType ? true : e.name === mobType))
+    .filter((e) => e && e.position)
+    .filter((e) => (mobType ? e.name === mobType : isHostile(e)))
+
     .map((e) => ({ entity: e, distance: bot.entity.position.distanceTo(e.position) }))
     .filter((x) => x.distance <= maxDistance)
     .sort((a, b) => a.distance - b.distance)
@@ -37,8 +41,13 @@ async function fleeSkill(bot, args = {}) {
 }
 
 async function eatSkill(bot, args = {}) {
+  if ((bot.food ?? 20) >= 20) {
+    return { success: true, reason: 'food already full, skip eating' }
+  }
+
   const foodName = args.foodName || null
   try {
+
     const foodItem = bot.inventory
       .items()
       .find((it) => (foodName ? it.name === foodName : /bread|beef|pork|chicken|apple|potato/.test(it.name)))

@@ -5,6 +5,8 @@ const { getSafetySignal } = require('./safety')
 
 const bot = createBotFromEnv()
 let lastSkillResult = null
+let skillBusy = false
+
 
 
 function sendJson(res, statusCode, data) {
@@ -46,16 +48,23 @@ const server = http.createServer(async (req, res) => {
 
 
     if (req.method === 'POST' && req.url === '/skill') {
-      const { dispatchSkill } = require('./skills')
-      const body = await readJsonBody(req)
-      const result = await dispatchSkill(bot, body)
-      lastSkillResult = {
-        name: body?.name || 'unknown',
-        success: Boolean(result?.success),
-        reason: result?.reason || '',
+      if (skillBusy) return sendJson(res, 409, { ok: false, error: 'bot busy' })
+      skillBusy = true
+      try {
+        const { dispatchSkill } = require('./skills')
+        const body = await readJsonBody(req)
+        const result = await dispatchSkill(bot, body)
+        lastSkillResult = {
+          name: body?.name || 'unknown',
+          success: Boolean(result?.success),
+          reason: result?.reason || '',
+        }
+        return sendJson(res, 200, { ok: true, ...result })
+      } finally {
+        skillBusy = false
       }
-      return sendJson(res, 200, { ok: true, ...result })
     }
+
 
     return sendJson(res, 404, { ok: false, error: 'not found' })
   } catch (err) {

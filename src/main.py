@@ -66,7 +66,8 @@ def main() -> None:
     )
     world_state = WorldStateMemory()
     world_state.long_term_goal = settings.agent_objective
-    plan_manager = PlanManager()
+    plan_manager = PlanManager(initial_steps=settings.initial_plan)
+
 
     agent = LayeredMinecraftAgent(
         capture=capture,

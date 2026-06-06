@@ -1,3 +1,5 @@
+const { isHostile } = require('./entities')
+
 function getTimeOfDay(bot) {
   if (!bot.time || typeof bot.time.timeOfDay !== 'number') return 'unknown'
   const t = bot.time.timeOfDay
@@ -11,13 +13,15 @@ function toDirLabel(dx, dz) {
   return dirs[idx]
 }
 
-function summarizeNearbyBlocks(bot, radius = 16, limit = 24) {
+function summarizeNearbyBlocks(bot, radius = 8, limit = 16) {
+
   const map = new Map()
   const pos = bot.entity?.position
   if (!pos) return []
 
   for (let dx = -radius; dx <= radius; dx += 1) {
-    for (let dy = -2; dy <= 4; dy += 1) {
+    for (let dy = -3; dy <= 8; dy += 1) {
+
       for (let dz = -radius; dz <= radius; dz += 1) {
         const p = pos.offset(dx, dy, dz)
         const block = bot.blockAt(p)
@@ -63,7 +67,8 @@ function summarizeNearbyEntities(bot, radius = 24) {
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz)
       return {
         name: e.name || e.displayName || e.type || 'unknown',
-        kind: e.type === 'mob' ? 'hostile' : e.type,
+        kind: isHostile(e) ? 'hostile' : (e.type === 'player' ? 'player' : 'passive'),
+
         distance,
         dir: toDirLabel(dx, dz),
       }

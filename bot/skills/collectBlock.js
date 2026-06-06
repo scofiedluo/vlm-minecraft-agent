@@ -1,4 +1,6 @@
 const { goals } = require('mineflayer-pathfinder')
+const { getSafetySignal } = require('../safety')
+
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -43,7 +45,12 @@ async function collectBlockSkill(bot, args = {}) {
   const timeoutMs = Number(args.timeoutMs || 30000)
 
   while (Date.now() - startAt < timeoutMs) {
+    if (getSafetySignal(bot).danger) {
+      return { success: false, reason: 'aborted: danger detected' }
+    }
+
     const now = countInventory(bot, block)
+
     if (now >= targetTotal) {
       return { success: true, reason: `collected ${now - before} ${block}` }
     }

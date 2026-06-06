@@ -15,5 +15,5 @@ $noVlmArg = ""
 if ($NoVLM) { $noVlmArg = "--no-vlm" }
 
 Write-Host "[run_all] starting Python layered agent..."
-$cmd = "conda run -n $PythonEnv python -m src.main --steps $Steps $noVlmArg"
+$cmd = "conda run --no-capture-output -n $PythonEnv python -u -m src.main --steps $Steps $noVlmArg"
 Invoke-Expression $cmd

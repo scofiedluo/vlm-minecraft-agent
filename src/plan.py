@@ -2,7 +2,7 @@
 Author: scofiedluo scofiedluo@gmail.com
 Date: 2026-06-06 16:00:10
 LastEditors: scofiedluo scofiedluo@gmail.com
-LastEditTime: 2026-06-06 18:20:24
+LastEditTime: 2026-06-06 22:56:57
 Description: 
 
 Copyright (c) 2026 by ${scofiedluo}, All Rights Reserved. 
@@ -14,12 +14,15 @@ from src.models import PlanStep
 
 
 class PlanManager:
-    def __init__(self) -> None:
-        self.steps: list[PlanStep] = [
-            PlanStep(id="1", goal="砍 3 个橡木原木", status="in_progress", skill="collect_block", args={"block": "oak_log", "count": 3}),
-            PlanStep(id="2", goal="合成木板和工作台", status="pending"),
-            PlanStep(id="3", goal="合成木镐", status="pending"),
+    def __init__(self, initial_steps: list[PlanStep] | None = None) -> None:
+        self.steps: list[PlanStep] = initial_steps or [
+            PlanStep(id="1", goal="砍 3 个木头原木", status="in_progress", skill="collect_block", args={"block": "oak_log", "count": 3}),
+            PlanStep(id="2", goal="合成木板和工作台", status="pending", skill="craft", args={"item": "crafting_table", "count": 1}),
+            PlanStep(id="3", goal="合成木镐", status="pending", skill="craft", args={"item": "wooden_pickaxe", "count": 1}),
         ]
+
+        self._promote_next_pending()
+
 
     def get_current_step(self) -> PlanStep | None:
         for step in self.steps:
@@ -81,4 +84,9 @@ class PlanManager:
         self._promote_next_pending()
 
     def all_done(self) -> bool:
-        return all(s.status in {"done", "cancelled"} for s in self.steps)
+        return not any(s.status in {"pending", "in_progress"} for s in self.steps)
+
+    def has_failed(self) -> bool:
+        return any(s.status == "failed" for s in self.steps)
+
+
