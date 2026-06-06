@@ -2,8 +2,7 @@
 Author: scofiedluo scofiedluo@gmail.com
 Date: 2026-05-31 18:12:47
 LastEditors: scofiedluo scofiedluo@gmail.com
-LastEditTime: 2026-05-31 22:34:03
-FilePath: vlm-minecraft-agent/src/planner.py
+LastEditTime: 2026-06-06 18:22:47
 Description: 
 
 Copyright (c) 2026 by ${scofiedluo}, All Rights Reserved. 
@@ -17,9 +16,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
-
-from src.models import ALLOWED_ACTIONS, ActionCommand, AgentDecision, AgentState, SceneInfo
+from src.models import ALLOWED_SKILLS, PlanDecision, SkillCall
 from src.prompts import SYSTEM_PROMPT, build_user_prompt
 from src.vlm_client import QwenVLMClient
 
@@ -30,35 +27,34 @@ class DecisionPlanner:
     def __init__(self, vlm_client: QwenVLMClient | None = None) -> None:
         self.vlm_client = vlm_client
 
-    def decide(self, image_path: str | Path, state: AgentState) -> AgentDecision:
+    def decide(self, image_path: str | Path, summary: dict[str, object]) -> PlanDecision:
+
         if self.vlm_client is None:
             return self.fallback("VLM client is not configured")
 
-        prompt = build_user_prompt(state)
+        prompt = build_user_prompt(summary)
         try:
             raw = self.vlm_client.analyze(image_path, prompt, SYSTEM_PROMPT)
             logger.info("Raw VLM response: %s", raw)
             return self.parse_decision(raw)
         except Exception as exc:
-            logger.exception("VLM decision failed: %s", exc)
+            logger.exception("VLM planning failed: %s", exc)
             return self.fallback(str(exc))
 
-    def parse_decision(self, raw: str) -> AgentDecision:
+    def parse_decision(self, raw: str) -> PlanDecision:
         data = extract_json_object(raw)
         normalized = normalize_decision_payload(data)
-        decision = AgentDecision.model_validate(normalized)
-        if decision.action.type not in ALLOWED_ACTIONS:
-            raise ValidationError.from_exception_data("AgentDecision", [])
-        return decision
+        return PlanDecision.model_validate(normalized)
 
     @staticmethod
-    def fallback(reason: str = "fallback") -> AgentDecision:
-        return AgentDecision(
-            scene=SceneInfo(risk="unknown", summary=reason),
-            goal="recover_from_invalid_or_missing_vlm_output",
-            action=ActionCommand(type="look_around", duration=1.0, reason=reason),
+    def fallback(reason: str = "fallback") -> PlanDecision:
+        return PlanDecision(
+            plan_update=[],
+            next_skill=SkillCall(name="explore", args={"radius": 8}, timeoutMs=15000),
+            reason=reason,
             confidence=0.0,
         )
+
 
 
 def extract_json_object(raw: str) -> dict[str, Any]:
@@ -85,51 +81,52 @@ def extract_json_object(raw: str) -> dict[str, Any]:
     return parsed
 
 
+
 def normalize_decision_payload(data: dict[str, Any]) -> dict[str, Any]:
     normalized: dict[str, Any] = dict(data)
 
-    action_raw = normalized.get("action")
-    if not isinstance(action_raw, dict):
-        logger.warning("VLM action payload is invalid, fallback to look_around")
-        normalized["action"] = {
-            "type": "look_around",
-            "duration": 1.0,
-            "reason": "invalid_action_payload",
-        }
-        return normalized
-
-    action = dict(action_raw)
-
-    action_type = action.get("type")
-    if action_type not in ALLOWED_ACTIONS:
-        logger.warning("VLM action type unsupported: %s, fallback to look_around", action_type)
-        action["type"] = "look_around"
-
-    raw_duration = action.get("duration", 1.0)
-    try:
-        duration = float(raw_duration)
-    except (TypeError, ValueError):
-        duration = 1.0
-
-    clamped_duration = max(0.1, min(duration, 6.0))
-    if clamped_duration != duration:
-        logger.warning("VLM duration %.3f is out of range, clamped to %.3f", duration, clamped_duration)
-    action["duration"] = clamped_duration
-
-    reason = action.get("reason")
-    if not isinstance(reason, str):
-        action["reason"] = "" if reason is None else str(reason)
-
-    normalized["action"] = action
-
-    confidence = normalized.get("confidence")
-    if confidence is None:
-        conf_value = 0.0
+    next_skill_raw = normalized.get("next_skill")
+    if not isinstance(next_skill_raw, dict):
+        normalized["next_skill"] = {"name": "explore", "args": {"radius": 8}, "timeoutMs": 15000}
     else:
+        next_skill = dict(next_skill_raw)
+        name = next_skill.get("name")
+        if name not in ALLOWED_SKILLS:
+            logger.warning("Unsupported skill '%s', fallback to explore", name)
+            next_skill["name"] = "explore"
+            next_skill["args"] = {"radius": 8}
+        if not isinstance(next_skill.get("args"), dict):
+            next_skill["args"] = {}
+
+        timeout_ms = next_skill.get("timeoutMs", 30000)
         try:
-            conf_value = float(confidence)
+            timeout_ms_value = int(timeout_ms)
         except (TypeError, ValueError):
-            conf_value = 0.0
-    normalized["confidence"] = max(0.0, min(conf_value, 1.0))
+            timeout_ms_value = 30000
+        next_skill["timeoutMs"] = max(1000, min(timeout_ms_value, 120000))
+        normalized["next_skill"] = next_skill
+
+    plan_update = normalized.get("plan_update")
+    if not isinstance(plan_update, list):
+        normalized["plan_update"] = []
+
+    confidence = normalized.get("confidence", 0.0)
+    try:
+        conf = float(confidence)
+    except (TypeError, ValueError):
+        conf = 0.0
+    normalized["confidence"] = max(0.0, min(conf, 1.0))
+
+    if not isinstance(normalized.get("reason"), str):
+        normalized["reason"] = str(normalized.get("reason", ""))
+
+    if not isinstance(normalized.get("scene"), dict):
+        normalized["scene"] = {
+            "terrain": "unknown",
+            "visible_blocks": [],
+            "mobs": [],
+            "risk": "unknown",
+            "summary": "",
+        }
 
     return normalized

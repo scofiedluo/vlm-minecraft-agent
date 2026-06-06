@@ -2,13 +2,11 @@
 Author: scofiedluo scofiedluo@gmail.com
 Date: 2026-05-31 18:12:47
 LastEditors: scofiedluo scofiedluo@gmail.com
-LastEditTime: 2026-05-31 22:56:48
-FilePath: vlm-minecraft-agent/src/vlm_client.py
+LastEditTime: 2026-05-31 22:48:50
 Description: 
 
 Copyright (c) 2026 by ${scofiedluo}, All Rights Reserved. 
 '''
-
 from __future__ import annotations
 
 import base64
