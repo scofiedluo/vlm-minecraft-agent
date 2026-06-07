@@ -27,3 +27,19 @@ def test_fallback_without_vlm_client(tmp_path) -> None:
     image.write_bytes(b"fake")
     decision = DecisionPlanner(vlm_client=None).decide(image, {"goal": "test"})
     assert decision.next_skill.name == "explore"
+
+
+def test_parse_hunt_skill_decision() -> None:
+    raw = """
+    {
+      "scene": {"terrain": "plain", "visible_blocks": ["grass_block"], "mobs": ["pig"], "risk": "low", "summary": "pig nearby"},
+      "plan_update": [],
+      "next_skill": {"name": "hunt", "args": {"mob":"pig","count":1}, "timeoutMs": 60000},
+      "reason": "hunt pig for food",
+      "confidence": 0.9
+    }
+    """
+    decision = DecisionPlanner().parse_decision(raw)
+    assert decision.next_skill.name == "hunt"
+    assert decision.next_skill.args["mob"] == "pig"
+

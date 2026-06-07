@@ -82,11 +82,13 @@ SkillName = Literal[
     "goto",
     "craft",
     "attack_nearest",
+    "hunt",
     "flee",
     "eat",
     "look_at",
     "explore",
 ]
+
 
 ALLOWED_SKILLS: tuple[str, ...] = tuple(SkillName.__args__)  # type: ignore[attr-defined]
 

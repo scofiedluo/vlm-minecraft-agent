@@ -109,6 +109,26 @@ def test_survival_skill_does_not_advance_plan() -> None:
     assert plan.steps[0].status == "in_progress"
 
 
+def test_hunt_skill_advances_plan() -> None:
+    plan = PlanManager()
+    plan.steps[0].skill = None
+
+    decision = FakeDecision(next_skill=SkillCall(name="hunt", args={"mob": "pig", "count": 1}, timeoutMs=60000))
+    agent = LayeredMinecraftAgent(
+        capture=FakeCapture(),
+        planner=FakePlanner(decision=decision),
+        skill_client=FakeSkillClient(success=True),
+        world_state=WorldStateMemory(),
+        plan_manager=plan,
+        loop_interval=0.0,
+    )
+
+    agent.run_step(1)
+
+    assert plan.steps[0].status == "done"
+
+
+
 def test_plan_update_done_is_not_directly_accepted_for_active_step() -> None:
     plan = PlanManager()
     plan.steps[0].skill = None

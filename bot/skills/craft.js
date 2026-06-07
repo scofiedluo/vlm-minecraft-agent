@@ -6,7 +6,12 @@ const EXTRA_LOG_TO_PLANK = {
   warped_stem: 'warped_planks',
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function countByPredicate(bot, predicate) {
+
   return bot.inventory.items().filter(predicate).reduce((sum, it) => sum + it.count, 0)
 }
 
@@ -46,9 +51,11 @@ async function craftPlanksFromLogs(bot, needAtLeast = 4) {
 
     try {
       await bot.craft(plankRecipes[0], maxCraftTimes, null)
+      await wait(200)
     } catch (_) {
       // continue trying other wood types
     }
+
 
     if (totalPlanks(bot) >= needAtLeast) return true
   }
@@ -89,9 +96,11 @@ async function ensureMaterialsForWoodenPickaxe(bot) {
 
     try {
       await bot.craft(stickRecipes[0], stickCraftTimes, null)
+      await wait(200)
     } catch (err) {
       return { ok: false, reason: `failed to craft sticks: ${err?.message || err}` }
     }
+
 
     planks = totalPlanks(bot)
     sticks = countItemByName(bot, 'stick')
@@ -167,7 +176,9 @@ async function ensureCraftingTable(bot) {
     try {
       await bot.pathfinder.goto(new goals.GoalNear(base.position.x, base.position.y, base.position.z, 2))
       await bot.placeBlock(base, new Vec3(0, 1, 0))
+      await wait(200)
       table = bot.findBlock({ matching: tableId, maxDistance: 6 })
+
       if (table) return { table, reason: 'placed crafting_table' }
     } catch (err) {
       lastErr = err
@@ -221,12 +232,17 @@ async function craftSkill(bot, args = {}) {
   }
 
   await bot.pathfinder.goto(new goals.GoalNear(table.position.x, table.position.y, table.position.z, 2))
-
+  await wait(250)
 
   recipes = bot.recipesFor(def.id, null, count, table)
+  for (let i = 0; i < 3 && (!recipes || !recipes.length); i++) {
+    await wait(200)
+    recipes = bot.recipesFor(def.id, null, count, table)
+  }
   if (!recipes || !recipes.length) {
     return { success: false, reason: `no recipe for ${item} even with table` }
   }
+
 
   try {
     await bot.craft(recipes[0], count, table)

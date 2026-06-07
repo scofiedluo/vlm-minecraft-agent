@@ -2,6 +2,8 @@ const { collectBlockSkill } = require('./collectBlock')
 const { gotoSkill, exploreSkill } = require('./navigate')
 const { craftSkill } = require('./craft')
 const { attackNearestSkill, fleeSkill, eatSkill } = require('./combat')
+const { huntSkill } = require('./hunt')
+
 
 function pickState(bot) {
   const inventory = {}
@@ -41,7 +43,9 @@ async function dispatchSkill(bot, payload = {}) {
     goto: gotoSkill,
     craft: craftSkill,
     attack_nearest: attackNearestSkill,
+    hunt: huntSkill,
     flee: fleeSkill,
+
     eat: eatSkill,
     look_at: async () => ({ success: false, reason: 'look_at not implemented yet' }),
     explore: exploreSkill,
