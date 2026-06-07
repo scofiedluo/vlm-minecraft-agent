@@ -14,6 +14,9 @@
 
 ## 环境准备
 
+### Minecraft及mineflayer相关依赖安装
+详细见[docs/minecraft.md]
+
 ### Python
 
 ```powershell
