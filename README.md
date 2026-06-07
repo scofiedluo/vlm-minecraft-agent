@@ -1,4 +1,4 @@
-# VLM Minecraft Agent（分层重构版）
+# VLM Minecraft Agent（双层控制）
 
 本项目已从“截图 + 低层动作逐步控制”重构为**分层架构**：
 - **Python 规划层**：截图 + VLM 规划 + 计划更新。
@@ -11,8 +11,6 @@
 - 执行输入：`POST /skill`
 - 执行反馈：`success/reason/diff`
 - 状态读取：`GET /state`
-
-关键设计文档：`docs/架构重构设计方案.md`
 
 ## 环境准备
 
@@ -157,15 +155,17 @@ conda run --no-capture-output -n vlm_minecraft python -u -m src.main --steps 50 
 
 ## 当前能力
 
+- **全自动合成木镐闭环**：完全打通了从「采集原木」->「合成木板」->「合成工作台并放置」->「补齐木棍等前置原料」->「在工作台上合成木镐」的复杂多步逻辑，具有极高的合成容错率。
+- **环境自保反射（Safety Reflex）**：在采集或合成途中遭遇怪围攻、或者血量过低时，bot 能瞬时中断当前技能并自动执行 `flee` 撤跑自保，保障生存。
+- **事件驱动高层规划**：规划层仅在“动作结束/状态需要变更/失败重试”时按需调用 VLM（支持快速决策路径），无需高频空转，大幅度降低了 API Token 成本和延迟。
+- **精准的生物类型判定**：正确区分敌对生物（僵尸/骷髅等）与被动友好生物（猪/牛/羊等），避免误报危险或无故攻击家畜。
+- **丰富的底闭环技能集**：集成 `collect_block`、`goto`、`explore`、`craft`、`attack_nearest`、`flee`、`eat`（饱食度满自动跳过）。
 
-- 已打通闭环：`collect_block`（采木头）
-- 已提供最小生存技能：`goto`、`explore`、`craft`、`attack_nearest`、`flee`、`eat`
-- 规划层为事件驱动：每次技能执行后再规划，而非固定高频循环
 
 ## 测试
 
 ```powershell
-conda run -n vlm_minecraft pytest -q
+conda run -n vlm_minecraft python -m pytest tests/test_agent.py -q
 ```
 
 ## 目录变化（重构后）
